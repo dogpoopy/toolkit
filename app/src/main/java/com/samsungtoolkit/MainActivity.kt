@@ -5,7 +5,6 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -32,10 +31,12 @@ class MainActivity : AppCompatActivity() {
 
     private val shizukuListener = Shizuku.OnRequestPermissionResultListener { code, result ->
         if (code == ShizukuHelper.REQUEST_CODE) {
-            if (result == PackageManager.PERMISSION_GRANTED)
+            if (result == PackageManager.PERMISSION_GRANTED) {
+                ShizukuHelper.bindService(packageName)
                 pendingFeature?.let { executeAction(it.action) }
-            else
+            } else {
                 toast(R.string.shizuku_permission_denied)
+            }
             pendingFeature = null
         }
     }
@@ -48,11 +49,13 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         applyEdgeToEdge()
         Shizuku.addRequestPermissionResultListener(shizukuListener)
+        if (ShizukuHelper.hasPermission()) ShizukuHelper.bindService(packageName)
         setupList()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        ShizukuHelper.unbindService()
         Shizuku.removeRequestPermissionResultListener(shizukuListener)
     }
 
@@ -84,18 +87,17 @@ class MainActivity : AppCompatActivity() {
         val needsShizuku = feature.permission == PermissionLevel.SHIZUKU &&
                 feature.action !is FeatureAction.ShowBatteryStats
         when {
-            !needsShizuku -> executeAction(feature.action)
+            !needsShizuku                 -> executeAction(feature.action)
             ShizukuHelper.hasPermission() -> executeAction(feature.action)
-            ShizukuHelper.isRunning() -> { pendingFeature = feature; ShizukuHelper.requestPermission() }
-            else -> showShizukuSetup()
+            ShizukuHelper.isRunning()     -> { pendingFeature = feature; ShizukuHelper.requestPermission() }
+            else                          -> showShizukuSetup()
         }
     }
 
     private fun executeAction(action: FeatureAction) {
         when (action) {
-            is FeatureAction.LaunchActivity -> safeLaunch(action.pkg, action.cls)
-            is FeatureAction.ChoiceDialog -> showChoiceDialog(action)
-            is FeatureAction.DialCode -> dial(action.code)
+            is FeatureAction.LaunchActivity  -> safeLaunch(action.pkg, action.cls)
+            is FeatureAction.ChoiceDialog    -> showChoiceDialog(action)
             is FeatureAction.ShowBatteryStats -> showBatteryStats()
             is FeatureAction.LaunchDeXTouchpad -> launchDeXTouchpad()
         }
@@ -107,9 +109,9 @@ class MainActivity : AppCompatActivity() {
                 component = ComponentName(pkg, cls)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
-        } catch (e: ActivityNotFoundException) { toast(R.string.error_not_found) }
-          catch (e: SecurityException) { toast(R.string.error_permission) }
-          catch (_: Exception) { toast(R.string.error_unavailable) }
+        } catch (e: ActivityNotFoundException) { toast(R.string.error_not_found)  }
+          catch (e: SecurityException)          { toast(R.string.error_permission) }
+          catch (_: Exception)                  { toast(R.string.error_unavailable) }
     }
 
     private fun showChoiceDialog(action: FeatureAction.ChoiceDialog) {
@@ -120,11 +122,6 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
-    }
-
-    private fun dial(code: String) {
-        try { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(code)}"))) }
-        catch (_: Exception) { toast(R.string.error_unavailable) }
     }
 
     private fun showBatteryStats() {
