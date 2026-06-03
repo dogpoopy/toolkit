@@ -4,7 +4,6 @@ import android.content.pm.PackageManager
 import rikka.shizuku.Shizuku
 
 object ShizukuHelper {
-
     const val SHIZUKU_PKG = "moe.shizuku.privileged.api"
     const val REQUEST_CODE = 1001
 
@@ -30,7 +29,16 @@ object ShizukuHelper {
     fun runShellCommand(command: String): String? {
         if (!hasPermission()) return null
         return try {
-            val proc = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
+            val clazz = Class.forName("rikka.shizuku.Shizuku")
+            val method = clazz.getDeclaredMethod(
+                "newProcess", 
+                Array<String>::class.java, 
+                Array<String>::class.java, 
+                String::class.java
+            )
+            method.isAccessible = true
+            
+            val proc = method.invoke(null, arrayOf("sh", "-c", command), null, null) as Process
             val out = proc.inputStream.bufferedReader().readText().trim()
             proc.waitFor()
             out.ifEmpty { null }
