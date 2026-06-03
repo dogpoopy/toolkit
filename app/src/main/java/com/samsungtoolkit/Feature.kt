@@ -8,7 +8,6 @@ sealed class FeatureAction {
         val title: String,
         val choices: List<Pair<String, LaunchActivity>>
     ) : FeatureAction()
-    data class DialCode(val code: String) : FeatureAction()
     object ShowBatteryStats : FeatureAction()
     object LaunchDeXTouchpad : FeatureAction()
 }
