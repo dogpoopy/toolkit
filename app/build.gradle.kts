@@ -24,7 +24,10 @@ android {
         }
     }
 
-    buildFeatures { viewBinding = true }
+    buildFeatures {
+        viewBinding = true
+        aidl = true
+    }
 
     buildTypes {
         release {
